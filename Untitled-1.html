@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIADE Cloud - Integrasi Google Sheets</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --background: #f8fafc;
+            --sheet-green: #0f9d58;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--background);
+            transition: background-color 0.3s ease;
+        }
+
+        .dark-mode {
+            --background: #0f172a;
+            color: #f1f5f9;
+        }
+        .dark-mode .bg-white { background-color: #1e293b !important; color: #f1f5f9; }
+        .dark-mode .text-gray-600 { color: #94a3b8 !important; }
+        .dark-mode .border-gray-100 { border-color: #334155 !important; }
+        .dark-mode .bg-gray-50 { background-color: #0f172a !important; }
+        .dark-mode .sidebar { background-color: #1e293b; border-color: #334155; }
+        
+        .sidebar-item { transition: all 0.2s ease-in-out; cursor: pointer; }
+        .sidebar-item.active {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
+        
+        .login-gradient {
+            background: linear-gradient(135deg, #1e40af 0%, #0f172a 100%);
+        }
+
+        .sheet-sync-status {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-100 overflow-hidden">
+        <div class="flex w-full h-full lg:h-[85%] lg:w-[90%] lg:rounded-[48px] shadow-2xl overflow-hidden animate-fade bg-white">
+            <div class="hidden lg:flex lg:w-1/2 login-gradient p-20 flex-col justify-between text-white relative">
+                <div class="relative z-10">
+                    <div class="flex items-center gap-4 mb-16">
+                        <div class="bg-white/10 p-4 rounded-3xl backdrop-blur-xl border border-white/20">
+                            <i class="fas fa-cloud-arrow-up text-3xl text-blue-300"></i>
+                        </div>
+                        <div>
+                            <span class="text-3xl font-black tracking-tighter block leading-none">SIADE</span>
+                            <span class="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Cloud Sync Edition</span>
+                        </div>
+                    </div>
+                    <h1 class="text-6xl font-extrabold leading-[1.1] mb-8">Administrasi Tanpa Batas.</h1>
+                    <p class="text-blue-100/70 text-xl max-w-md font-medium leading-relaxed">
+                        Terintegrasi penuh dengan Google Spreadsheet untuk manajemen data yang transparan, real-time, dan kolaboratif.
+                    </p>
+                </div>
+                <div class="relative z-10 flex flex-col gap-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/30">
+                            <i class="fab fa-google-drive text-green-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold">Connected to Spreadsheet</p>
+                            <p class="text-[10px] text-blue-300 font-mono">ID: 1_eXiSHP...O50I</p>
+                        </div>
+                    </div>
+                    <div class="h-px w-full bg-white/10"></div>
+                    <div class="flex justify-between items-end">
+                        <div><p class="text-2xl font-bold">Vito Aldino</p><p class="text-xs uppercase tracking-widest text-blue-400">Lead Architect</p></div>
+                        <div class="text-right"><p class="text-xs text-blue-300">System Version</p><p class="font-bold">v4.0.2-Stable</p></div>
+                    </div>
+                </div>
+                <!-- Decoration -->
+                <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
+                <div class="absolute bottom-1/4 -left-12 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl"></div>
+            </div>
+
+            <div class="w-full lg:w-1/2 bg-white p-12 lg:p-24 flex flex-col justify-center">
+                <div class="max-w-md mx-auto w-full">
+                    <div class="mb-10">
+                        <h2 class="text-4xl font-black text-gray-900 mb-3 tracking-tight">Selamat Datang</h2>
+                        <p class="text-gray-500 font-medium">Sistem Informasi Administrasi & Data Elektronik</p>
+                    </div>
+
+                    <form onsubmit="handleLogin(event)" class="space-y-6">
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Role Akses Cloud</label>
+                            <div class="relative group">
+                                <select id="loginRole" class="w-full pl-14 pr-6 py-5 bg-gray-50 border border-gray-100 rounded-[24px] focus:ring-4 focus:ring-blue-500/10 focus:bg-white transition-all outline-none appearance-none font-bold text-gray-700">
+                                    <option value="Super Admin">Super Admin (Cloud Master)</option>
+                                    <option value="Operator Sekolah">Operator Sekolah</option>
+                                    <option value="Kepala Sekolah">Kepala Sekolah</option>
+                                </select>
+                                <i class="fas fa-shield-halved absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors"></i>
+                                <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-gray-300 text-xs pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">ID Pengguna</label>
+                            <div class="relative group">
+                                <input type="text" id="username" required placeholder="NIP / Email" class="w-full pl-14 pr-6 py-5 bg-gray-50 border border-gray-100 rounded-[24px] focus:ring-4 focus:ring-blue-500/10 focus:bg-white transition-all outline-none font-bold text-gray-700">
+                                <i class="fas fa-user-circle absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors"></i>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Sandi Enkripsi</label>
+                            <div class="relative group">
+                                <input type="password" id="password" required placeholder="••••••••" class="w-full pl-14 pr-6 py-5 bg-gray-50 border border-gray-100 rounded-[24px] focus:ring-4 focus:ring-blue-500/10 focus:bg-white transition-all outline-none font-bold text-gray-700">
+                                <i class="fas fa-key absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors"></i>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-lg shadow-2xl shadow-blue-500/30 hover:bg-blue-700 hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center gap-3 mt-4">
+                            Hubungkan & Masuk <i class="fas fa-arrow-right-long"></i>
+                        </button>
+                    </form>
+                    
+                    <div class="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        <span>Status Server: Online</span>
+                        <span>Encrypted Session</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="main-app" class="flex h-screen w-full hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar w-80 bg-white h-full border-r border-gray-100 flex flex-col transition-all duration-300 z-50 overflow-y-auto custom-scrollbar">
+            <div class="p-8 flex items-center gap-4">
+                <div class="bg-blue-600 w-12 h-12 rounded-[18px] flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                    <i class="fas fa-cloud text-xl"></i>
+                </div>
+                <div>
+                    <span class="text-2xl font-black tracking-tighter text-gray-900 block leading-none">SIADE</span>
+                    <span class="text-[9px] font-bold uppercase tracking-[0.2em] text-blue-600">Cloud Console</span>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 flex flex-col gap-1.5">
+                <p class="text-[10px] uppercase font-black text-gray-400 px-4 mb-3 tracking-[0.2em]">Dashboard Utama</p>
+                <button onclick="switchView('dashboard')" class="sidebar-item w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-500 active" data-view="dashboard">
+                    <i class="fas fa-grid-horizontal w-5 text-lg"></i> <span class="text-sm font-bold">Ringkasan Cloud</span>
+                </button>
+                
+                <p class="text-[10px] uppercase font-black text-gray-400 px-4 mt-8 mb-3 tracking-[0.2em]">Data & Integrasi</p>
+                <button onclick="switchView('users')" class="sidebar-item w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-500" data-view="users">
+                    <i class="fas fa-address-book w-5 text-lg"></i> <span class="text-sm font-bold">Direktori Pengguna</span>
+                </button>
+                <button onclick="switchView('classes')" class="sidebar-item w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-500" data-view="classes">
+                    <i class="fas fa-layer-group w-5 text-lg"></i> <span class="text-sm font-bold">Struktur Kelas</span>
+                </button>
+                <button onclick="switchView('sync')" class="sidebar-item w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-500" data-view="sync">
+                    <i class="fab fa-google-drive w-5 text-lg text-green-600"></i> <span class="text-sm font-bold text-green-700">Google Sheets Config</span>
+                </button>
+
+                <p class="text-[10px] uppercase font-black text-gray-400 px-4 mt-8 mb-3 tracking-[0.2em]">Akademik & Tugas</p>
+                <button onclick="switchView('academic-settings')" class="sidebar-item w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-500" data-view="academic-settings">
+                    <i class="fas fa-calendar-check w-5 text-lg"></i> <span class="text-sm font-bold">Kalender & Periode</span>
+                </button>
+                <button onclick="switchView('teacher-tasks')" class="sidebar-item w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-500" data-view="teacher-tasks">
+                    <i class="fas fa-chalkboard-user w-5 text-lg"></i> <span class="text-sm font-bold">Penugasan Pengajar</span>
+                </button>
+            </div>
+
+            <div class="mt-auto p-6">
+                <div class="bg-gray-50 dark:bg-slate-800 p-5 rounded-3xl border border-gray-100">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold" id="userAvatar">
+                            <i class="fas fa-user-shield text-xl"></i>
+                        </div>
+                        <div class="overflow-hidden">
+                            <p class="text-sm font-black truncate text-gray-900" id="userNameLabel">Admin Utama</p>
+                            <p class="text-[9px] text-blue-600 font-bold uppercase tracking-wider">Super Admin Account</p>
+                        </div>
+                    </div>
+                    <button onclick="handleLogout()" class="w-full py-3 bg-red-50 text-red-600 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-red-100 transition-all">Sign Out System</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col min-w-0 bg-[#f8fafc]">
+            <!-- Topbar -->
+            <header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-10 z-40">
+                <div class="flex items-center gap-6">
+                    <button onclick="toggleSidebar()" class="lg:hidden text-gray-500"><i class="fas fa-bars-staggered text-xl"></i></button>
+                    <div>
+                        <h2 id="pageTitle" class="text-xl font-black text-gray-900 tracking-tight">Ringkasan Cloud</h2>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Google Sheets Synced</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+                        <i class="fas fa-clock text-blue-500 text-sm"></i>
+                        <span class="text-xs font-bold text-gray-600">TA: 2023/2024 (Ganjil)</span>
+                    </div>
+                    <div class="h-8 w-px bg-gray-100"></div>
+                    <button onclick="syncDataNow()" class="w-10 h-10 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition-all shadow-sm" title="Sync Spreadsheet">
+                        <i class="fas fa-rotate" id="syncIcon"></i>
+                    </button>
+                    <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-2xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-gray-200 transition-all">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dynamic Content Container -->
+            <div id="mainView" class="flex-1 overflow-y-auto p-10 custom-scrollbar">
+                
+                <!-- VIEW: DASHBOARD -->
+                <div id="view-dashboard" class="view-content animate-fade space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div class="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner"><i class="fas fa-users-viewfinder text-xl"></i></div>
+                            <p class="text-xs text-gray-400 font-black uppercase tracking-[0.1em] mb-1">Populasi Pengguna</p>
+                            <h4 class="text-3xl font-black text-gray-900">1,540</h4>
+                            <p class="text-[10px] font-bold text-green-500 mt-2 flex items-center gap-1"><i class="fas fa-arrow-up"></i> 12% dari bulan lalu</p>
+                        </div>
+                        <div class="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner"><i class="fas fa-house-chimney-window text-xl"></i></div>
+                            <p class="text-xs text-gray-400 font-black uppercase tracking-[0.1em] mb-1">Rombongan Belajar</p>
+                            <h4 class="text-3xl font-black text-gray-900">42</h4>
+                            <p class="text-[10px] font-bold text-gray-400 mt-2 flex items-center gap-1">Data Terpusat</p>
+                        </div>
+                        <div class="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner"><i class="fas fa-book-open-reader text-xl"></i></div>
+                            <p class="text-xs text-gray-400 font-black uppercase tracking-[0.1em] mb-1">Mata Pelajaran</p>
+                            <h4 class="text-3xl font-black text-gray-900">24</h4>
+                            <p class="text-[10px] font-bold text-amber-500 mt-2 flex items-center gap-1">Kurikulum Merdeka</p>
+                        </div>
+                        <div class="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-inner"><i class="fab fa-google-drive text-xl"></i></div>
+                            <p class="text-xs text-gray-400 font-black uppercase tracking-[0.1em] mb-1">Sheet Sync Status</p>
+                            <h4 class="text-3xl font-black text-green-600">Active</h4>
+                            <p class="text-[10px] font-bold text-gray-400 mt-2 flex items-center gap-1">Latency: 45ms</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 bg-white p-10 rounded-[40px] border border-gray-100 shadow-sm">
+                            <div class="flex items-center justify-between mb-10">
+                                <h3 class="text-xl font-black text-gray-900 tracking-tight">Distribusi Pengguna Cloud</h3>
+                                <div class="flex gap-2">
+                                    <span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold">Live Data</span>
+                                </div>
+                            </div>
+                            <div class="h-[350px]"><canvas id="userDistChart"></canvas></div>
+                        </div>
+                        <div class="bg-white p-10 rounded-[40px] border border-gray-100 shadow-sm">
+                            <h3 class="text-xl font-black text-gray-900 tracking-tight mb-8">Log Transaksi Sheet</h3>
+                            <div class="space-y-6" id="activity-log">
+                                <div class="flex gap-5">
+                                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"><i class="fas fa-cloud-download text-sm"></i></div>
+                                    <div>
+                                        <p class="text-sm font-black text-gray-900">Fetch Data Siswa</p>
+                                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">2 Menit yang lalu</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-5">
+                                    <div class="w-12 h-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"><i class="fas fa-cloud-upload text-sm"></i></div>
+                                    <div>
+                                        <p class="text-sm font-black text-gray-900">Update Struktur Kelas</p>
+                                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">15 Menit yang lalu</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-5">
+                                    <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"><i class="fas fa-shield-check text-sm"></i></div>
+                                    <div>
+                                        <p class="text-sm font-black text-gray-900">Integrasi Sheet Berhasil</p>
+                                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">1 Jam yang lalu</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="w-full mt-10 py-4 border-2 border-dashed border-gray-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:border-blue-200 hover:text-blue-500 transition-all">Lihat Selengkapnya</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: GOOGLE SHEETS SYNC -->
+                <div id="view-sync" class="view-content animate-fade hidden space-y-8">
+                    <div class="bg-white p-12 rounded-[48px] border border-gray-100 shadow-sm">
+                        <div class="flex items-center gap-6 mb-12">
+                            <div class="w-20 h-20 bg-green-50 text-green-600 rounded-[32px] flex items-center justify-center shadow-xl shadow-green-100">
+                                <i class="fab fa-google-drive text-4xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-3xl font-black text-gray-900 tracking-tight">Konfigurasi Google Sheets</h3>
+                                <p class="text-gray-500 font-medium">Hubungkan sistem SIADE ke spreadsheet eksternal Anda.</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                            <div class="space-y-8">
+                                <div class="space-y-3">
+                                    <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Spreadsheet ID</label>
+                                    <div class="relative">
+                                        <input type="text" id="sheetIdInput" value="1_eXiSHPIi_e8uUmvi6xhZsgesgoOC8iapYPg4V3O50I" class="w-full p-6 bg-gray-50 border border-gray-100 rounded-3xl font-mono text-sm focus:ring-4 focus:ring-green-500/10 outline-none transition-all">
+                                        <div class="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
+                                            <button onclick="copySheetLink()" class="p-3 bg-white text-gray-400 hover:text-blue-600 rounded-xl border border-gray-100 transition-all" title="Copy Link"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                    </div>
+                                    <p class="text-[10px] text-gray-400 font-bold px-2 italic">Pastikan spreadsheet telah dibagikan (Share) dengan akses "Anyone with the link can view".</p>
+                                </div>
+
+                                <div class="p-8 bg-green-50/50 border border-green-100 rounded-[32px] space-y-4">
+                                    <h4 class="text-sm font-black text-green-700 flex items-center gap-2">
+                                        <i class="fas fa-circle-info"></i> Panduan Integrasi
+                                    </h4>
+                                    <ol class="text-xs text-green-600 font-bold space-y-3 leading-relaxed">
+                                        <li class="flex gap-3"><span>1.</span><span>Gunakan ID spreadsheet dari URL (karakter antara /d/ dan /edit).</span></li>
+                                        <li class="flex gap-3"><span>2.</span><span>Aktifkan Google Sheets API di Google Cloud Console untuk fitur Write/Tulis.</span></li>
+                                        <li class="flex gap-3"><span>3.</span><span>Sistem akan melakukan pemetaan kolom secara otomatis berdasarkan header di Baris 1.</span></li>
+                                    </ol>
+                                </div>
+                            </div>
+
+                            <div class="space-y-8">
+                                <div class="bg-slate-900 p-8 rounded-[40px] text-white space-y-6 shadow-2xl">
+                                    <h4 class="text-lg font-black tracking-tight">Status Koneksi Cloud</h4>
+                                    <div class="space-y-5">
+                                        <div class="flex justify-between items-center pb-4 border-b border-white/10">
+                                            <span class="text-xs font-bold text-gray-400 uppercase">Database Link</span>
+                                            <span class="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-[10px] font-black border border-green-500/30">CONNECTED</span>
+                                        </div>
+                                        <div class="flex justify-between items-center pb-4 border-b border-white/10">
+                                            <span class="text-xs font-bold text-gray-400 uppercase">Auto-Sync</span>
+                                            <span class="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-[10px] font-black border border-blue-500/30">ENABLED</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs font-bold text-gray-400 uppercase">Sync Frequency</span>
+                                            <span class="text-xs font-black">5 Minutes</span>
+                                        </div>
+                                    </div>
+                                    <button class="w-full py-5 bg-green-600 hover:bg-green-700 text-white rounded-3xl font-black transition-all shadow-xl shadow-green-900/40">Uji Konektivitas Sekarang</button>
+                                </div>
+                                
+                                <a href="https://docs.google.com/spreadsheets/d/1_eXiSHPIi_e8uUmvi6xhZsgesgoOC8iapYPg4V3O50I/edit?usp=sharing" target="_blank" class="flex items-center justify-between p-6 bg-white border border-gray-100 rounded-3xl hover:border-green-400 transition-all group">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform"><i class="fas fa-file-excel text-xl"></i></div>
+                                        <div>
+                                            <p class="text-sm font-black text-gray-900">Buka di Google Sheets</p>
+                                            <p class="text-[10px] text-gray-400 font-bold">Edit sumber data langsung</p>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-arrow-up-right-from-square text-gray-300 group-hover:text-green-600 transition-colors"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: USER DIRECTORY -->
+                <div id="view-users" class="view-content animate-fade hidden space-y-8">
+                    <div class="flex flex-col md:flex-row justify-between items-end gap-6">
+                        <div>
+                            <h3 class="text-3xl font-black text-gray-900 tracking-tight">Direktori Pengguna</h3>
+                            <p class="text-gray-500 font-medium">Manajemen identitas yang tersinkronisasi dengan Sheet.</p>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="relative">
+                                <input type="text" placeholder="Cari NIP / Nama..." class="pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-2xl text-sm font-bold w-72 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all">
+                                <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-300"></i>
+                            </div>
+                            <button onclick="toggleModal('userModal')" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all">
+                                <i class="fas fa-plus mr-2"></i> Tambah User
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-[40px] border border-gray-100 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-gray-50/50 text-gray-400 uppercase text-[10px] font-black tracking-[0.2em]">
+                                    <tr>
+                                        <th class="px-10 py-6">Identitas Pengguna</th>
+                                        <th class="px-10 py-6">ID / No. Induk</th>
+                                        <th class="px-10 py-6">Peran Cloud</th>
+                                        <th class="px-10 py-6">Sesi Terakhir</th>
+                                        <th class="px-10 py-6">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-50" id="userTableBody">
+                                    <tr class="hover:bg-blue-50/30 transition-all group">
+                                        <td class="px-10 py-6">
+                                            <div class="flex items-center gap-4">
+                                                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-blue-100">VA</div>
+                                                <div>
+                                                    <p class="text-sm font-black text-gray-900">Vito Aldino, S.Kom</p>
+                                                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">vito@siade.cloud</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-10 py-6">
+                                            <p class="text-xs font-black text-gray-700">ADM-99201</p>
+                                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Super Admin</p>
+                                        </td>
+                                        <td class="px-10 py-6">
+                                            <span class="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black border border-indigo-100 uppercase tracking-widest">Master Cloud</span>
+                                        </td>
+                                        <td class="px-10 py-6">
+                                            <p class="text-[10px] font-black text-gray-500 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span> Online Sekarang</p>
+                                        </td>
+                                        <td class="px-10 py-6">
+                                            <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                                <button class="w-10 h-10 bg-white border border-gray-100 text-blue-600 rounded-xl shadow-sm hover:bg-blue-600 hover:text-white transition-all"><i class="fas fa-edit text-xs"></i></button>
+                                                <button class="w-10 h-10 bg-white border border-gray-100 text-red-600 rounded-xl shadow-sm hover:bg-red-600 hover:text-white transition-all"><i class="fas fa-trash text-xs"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <!-- Dynamic Rows would go here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Placeholder views for other menus -->
+                <div id="view-classes" class="view-content animate-fade hidden">
+                     <div class="bg-white p-20 rounded-[48px] border border-dashed border-gray-200 text-center">
+                        <i class="fas fa-layer-group text-6xl text-gray-100 mb-6"></i>
+                        <h3 class="text-2xl font-black text-gray-900">Modul Struktur Kelas</h3>
+                        <p class="text-gray-400 font-medium max-w-sm mx-auto">Tampilan ini sedang dalam pemetaan data dari Google Sheets ID: 1_eXiSHP...</p>
+                     </div>
+                </div>
+                
+                <div id="view-academic-settings" class="view-content animate-fade hidden">
+                    <div class="bg-white p-20 rounded-[48px] border border-dashed border-gray-200 text-center">
+                       <i class="fas fa-calendar-alt text-6xl text-gray-100 mb-6"></i>
+                       <h3 class="text-2xl font-black text-gray-900">Pengaturan Akademik</h3>
+                       <p class="text-gray-400 font-medium max-w-sm mx-auto">Konfigurasi tahun ajaran dan kalender tersimpan di Sheet Aktif.</p>
+                    </div>
+                </div>
+
+                <div id="view-teacher-tasks" class="view-content animate-fade hidden">
+                    <div class="bg-white p-20 rounded-[48px] border border-dashed border-gray-200 text-center">
+                       <i class="fas fa-chalkboard-user text-6xl text-gray-100 mb-6"></i>
+                       <h3 class="text-2xl font-black text-gray-900">Penugasan Pengajar</h3>
+                       <p class="text-gray-400 font-medium max-w-sm mx-auto">Matriks guru dan mata pelajaran ditarik dari kolom tugas mengajar.</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: ADD USER -->
+    <div id="userModal" class="modal-overlay fixed inset-0 z-[200] hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden animate-fade">
+            <div class="p-10 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+                <div>
+                    <h3 class="text-2xl font-black text-gray-900 tracking-tight">Tambah Entri Baru</h3>
+                    <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Data akan dikirim ke Cloud Sheet</p>
+                </div>
+                <button onclick="toggleModal('userModal')" class="w-12 h-12 bg-white text-gray-400 hover:text-red-600 rounded-2xl shadow-sm transition-all flex items-center justify-center"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-10">
+                <form class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Kategori Peran</label>
+                        <select class="w-full p-5 bg-gray-50 border border-gray-100 rounded-3xl font-bold text-sm focus:ring-4 focus:ring-blue-500/10 outline-none">
+                            <option>Guru / Tenaga Pendidik</option>
+                            <option>Siswa / Peserta Didik</option>
+                            <option>Staf Administrasi</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nama Lengkap</label>
+                        <input type="text" class="w-full p-5 bg-gray-50 border border-gray-100 rounded-3xl font-bold text-sm focus:ring-4 focus:ring-blue-500/10 outline-none">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nomor Induk (NIP/NISN)</label>
+                        <input type="text" class="w-full p-5 bg-gray-50 border border-gray-100 rounded-3xl font-bold text-sm focus:ring-4 focus:ring-blue-500/10 outline-none">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Resmi</label>
+                        <input type="email" class="w-full p-5 bg-gray-50 border border-gray-100 rounded-3xl font-bold text-sm focus:ring-4 focus:ring-blue-500/10 outline-none">
+                    </div>
+                </form>
+                <div class="flex gap-4 mt-12">
+                    <button onclick="toggleModal('userModal')" class="flex-1 py-5 bg-gray-100 text-gray-500 rounded-[24px] font-black uppercase tracking-widest text-xs hover:bg-gray-200 transition-all">Batalkan</button>
+                    <button onclick="simulatePushData()" class="flex-1 py-5 bg-blue-600 text-white rounded-[24px] font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all">Simpan ke Cloud</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // System Config
+        const CONFIG = {
+            sheetId: '1_eXiSHPIi_e8uUmvi6xhZsgesgoOC8iapYPg4V3O50I',
+            isDarkMode: false,
+            syncing: false
+        };
+
+        let userDistChartInstance = null;
+
+        // AUTH LOGIC
+        function handleLogin(e) {
+            e.preventDefault();
+            const role = document.getElementById('loginRole').value;
+            const user = document.getElementById('username').value;
+            
+            document.getElementById('userNameLabel').innerText = user || "Administrator";
+            
+            // UI Transition
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            
+            // Initialization
+            setTimeout(() => {
+                initCharts();
+                syncDataNow();
+            }, 300);
+        }
+
+        function handleLogout() {
+            if(confirm('Akhiri sesi cloud dan keluar dari sistem?')) {
+                location.reload();
+            }
+        }
+
+        // VIEW NAVIGATION
+        function switchView(viewId) {
+            document.querySelectorAll('.sidebar-item').forEach(btn => {
+                btn.classList.remove('active');
+                if(btn.getAttribute('data-view') === viewId) btn.classList.add('active');
+            });
+
+            document.querySelectorAll('.view-content').forEach(view => view.classList.add('hidden'));
+            document.getElementById('view-' + viewId).classList.remove('hidden');
+
+            const titles = {
+                'dashboard': 'Ringkasan Cloud',
+                'users': 'Direktori Pengguna',
+                'classes': 'Struktur Kelas',
+                'sync': 'Google Sheets Config',
+                'academic-settings': 'Kalender & Periode',
+                'teacher-tasks': 'Penugasan Pengajar'
+            };
+            document.getElementById('pageTitle').innerText = titles[viewId] || 'SIADE';
+            
+            if(window.innerWidth < 1024) toggleSidebar();
+        }
+
+        // GOOGLE SHEETS SYNC LOGIC
+        function syncDataNow() {
+            if(CONFIG.syncing) return;
+            
+            const syncIcon = document.getElementById('syncIcon');
+            syncIcon.classList.add('fa-spin');
+            CONFIG.syncing = true;
+
+            // Notification simulation
+            showToast("Memulai sinkronisasi Google Sheets...", "info");
+
+            // REAL FETCH ATTEMPT (Using Visualization API for public read)
+            const url = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:json`;
+            
+            fetch(url)
+                .then(res => res.text())
+                .then(data => {
+                    // Cleanup Google's weird JSON wrapper
+                    const json = JSON.parse(data.substring(47).slice(0, -2));
+                    console.log("Sheet Data Fetched:", json);
+                    
+                    // Logic to map and display would go here
+                    // For demo, we just simulate success
+                    setTimeout(() => {
+                        syncIcon.classList.remove('fa-spin');
+                        CONFIG.syncing = false;
+                        showToast("Sinkronisasi Cloud Berhasil", "success");
+                        updateActivityLog("Sinkronisasi data berhasil dari sheet " + CONFIG.sheetId.substring(0, 8) + "...");
+                    }, 1500);
+                })
+                .catch(err => {
+                    console.error("Fetch Error:", err);
+                    setTimeout(() => {
+                        syncIcon.classList.remove('fa-spin');
+                        CONFIG.syncing = false;
+                        showToast("Gagal mengambil data. Periksa pengaturan Share Sheet.", "error");
+                    }, 1500);
+                });
+        }
+
+        function simulatePushData() {
+            showToast("Menyimpan data ke Cloud Sheet...", "info");
+            setTimeout(() => {
+                toggleModal('userModal');
+                showToast("Data berhasil ditambahkan ke Spreadsheet!", "success");
+                updateActivityLog("Entri pengguna baru ditambahkan ke Cloud.");
+            }, 2000);
+        }
+
+        // UTILITIES
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-ml-80');
+        }
+
+        function toggleModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.toggle('hidden');
+        }
+
+        function toggleDarkMode() {
+            CONFIG.isDarkMode = !CONFIG.isDarkMode;
+            document.body.classList.toggle('dark-mode');
+        }
+
+        function copySheetLink() {
+            const input = document.getElementById('sheetIdInput');
+            input.select();
+            document.execCommand('copy');
+            showToast("ID Spreadsheet disalin ke clipboard", "info");
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-10 right-10 px-8 py-4 rounded-3xl text-white font-black text-xs shadow-2xl z-[300] animate-fade transform translate-y-0 transition-all ${
+                type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+            }`;
+            toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'} mr-3"></i> ${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-10');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        function updateActivityLog(text) {
+            const log = document.getElementById('activity-log');
+            const newEntry = document.createElement('div');
+            newEntry.className = 'flex gap-5 animate-fade';
+            newEntry.innerHTML = `
+                <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"><i class="fas fa-rotate text-sm"></i></div>
+                <div>
+                    <p class="text-sm font-black text-gray-900">${text}</p>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Baru Saja</p>
+                </div>
+            `;
+            log.prepend(newEntry);
+            if(log.children.length > 4) log.lastChild.remove();
+        }
+
+        // CHARTS INITIALIZATION
+        function initCharts() {
+            const ctx = document.getElementById('userDistChart').getContext('2d');
+            if (userDistChartInstance) userDistChartInstance.destroy();
+
+            userDistChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Siswa (IPA)', 'Siswa (IPS)', 'Guru Tetap', 'Guru Honorer', 'Staff TU'],
+                    datasets: [{
+                        label: 'Jumlah Pengguna',
+                        data: [640, 520, 85, 42, 18],
+                        backgroundColor: [
+                            'rgba(37, 99, 235, 0.8)', 
+                            'rgba(16, 185, 129, 0.8)', 
+                            'rgba(245, 158, 11, 0.8)', 
+                            'rgba(139, 92, 246, 0.8)', 
+                            'rgba(100, 116, 139, 0.8)'
+                        ],
+                        borderRadius: 16,
+                        borderSkipped: false,
+                        barThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { display: false },
+                            ticks: { font: { weight: 'bold', family: 'Plus Jakarta Sans' } }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { font: { weight: 'bold', family: 'Plus Jakarta Sans' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Handle Responsive Behavior
+        window.onload = () => {
+            if (window.innerWidth < 1024) document.getElementById('sidebar').classList.add('-ml-80');
+        };
+        window.onresize = () => {
+            if (window.innerWidth >= 1024) document.getElementById('sidebar').classList.remove('-ml-80');
+            else document.getElementById('sidebar').classList.add('-ml-80');
+        };
+    </script>
+</body>
+</html>
